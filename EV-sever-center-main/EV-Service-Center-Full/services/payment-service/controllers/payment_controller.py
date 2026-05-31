@@ -21,11 +21,25 @@ def admin_required():
     return wrapper
 # --- End Decorators ---
 
+def internal_token_required(fn):
+    """Chỉ cho phép service nội bộ (Finance) gọi qua X-Internal-Token."""
+    @wraps(fn)
+    def decorator(*args, **kwargs):
+        token = request.headers.get("X-Internal-Token")
+        expected = current_app.config.get("INTERNAL_SERVICE_TOKEN")
+        if not expected:
+            return jsonify({"error": "Internal service token is not configured."}), 503
+        if not token or token != expected:
+            return jsonify({"error": "Unauthorized internal request"}), 401
+        return fn(*args, **kwargs)
+    return decorator
+
 # Định nghĩa Blueprint
 payment_bp = Blueprint("payment", __name__, url_prefix="/api/payments")
 
-# 1. POST /api/payments/create (Tạo giao dịch thanh toán - Được gọi bởi Finance Service)
+# 1. POST /api/payments/create (Tạo giao dịch thanh toán - Chỉ Finance Service)
 @payment_bp.route("/create", methods=["POST"])
+@internal_token_required
 def create_payment_request_route():
     # Lấy data (invoice_id, method, user_id, amount)
     data = request.json
