@@ -4,7 +4,7 @@ import os # Import os để tạo random bytes
 from datetime import datetime, timedelta
 from flask import current_app, jsonify
 from app import db
-from models.payment_model import PaymentTransaction, PAYMENT_STATUSES
+from models.payment_model import PaymentTransaction, PAYMENT_STATUSES, VALID_PAYMENT_METHODS
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError # Import để bắt lỗi DB
 
@@ -123,19 +123,52 @@ class PaymentService:
 
     # --- Core Business Logic (Giữ nguyên logic tạo request) ---
     @staticmethod
-    def create_payment_request(invoice_id, method, user_id, amount): 
-        """Bắt đầu tạo giao dịch thanh toán"""
-        
-        # Bỏ API call, chỉ kiểm tra trạng thái bên Finance
-        # ...
+    def create_payment_request(invoice_id, method, user_id, amount):
+        """Bắt đầu tạo giao dịch thanh toán — validate đầy đủ trước khi ghi DB."""
 
-        # 3. Tạo dữ liệu PG Mock
+        if method not in VALID_PAYMENT_METHODS:
+            return None, "Phương thức thanh toán không hợp lệ. Chỉ hỗ trợ: momo_qr, bank_transfer."
+
+        try:
+            invoice_id = int(invoice_id)
+            user_id = int(user_id)
+            amount = float(amount)
+        except (TypeError, ValueError):
+            return None, "Dữ liệu invoice_id, user_id hoặc amount không hợp lệ."
+
+        if amount <= 0:
+            return None, "Số tiền thanh toán phải lớn hơn 0."
+
+        invoice_data, invoice_error = PaymentService._get_invoice_details(invoice_id)
+        if invoice_error or not invoice_data:
+            return None, "Không tìm thấy hóa đơn hoặc không thể xác minh hóa đơn."
+
+        invoice_status = invoice_data.get("status")
+        if invoice_status == "paid":
+            return None, "Hóa đơn này đã được thanh toán."
+        if invoice_status == "canceled":
+            return None, "Hóa đơn này đã bị hủy, không thể thanh toán."
+
+        if str(invoice_data.get("user_id")) != str(user_id):
+            return None, "User không khớp với chủ sở hữu hóa đơn."
+
+        invoice_amount = float(invoice_data.get("total_amount") or 0)
+        if abs(amount - invoice_amount) > 0.01:
+            return None, "Số tiền thanh toán không khớp với tổng tiền hóa đơn."
+
+        pending_tx = PaymentTransaction.query.filter_by(
+            invoice_id=invoice_id,
+            status="pending",
+        ).first()
+        if pending_tx:
+            return None, "Đã có giao dịch đang chờ thanh toán cho hóa đơn này."
+
         pg_id, payment_data = PaymentService._generate_mock_pg_data(invoice_id, amount, method)
         
         if not pg_id:
              return None, "Phương thức thanh toán không hợp lệ."
 
-        # 4. Tạo Payment Transaction trong DB (FIX CRASH)
+        # 4. Tạo Payment Transaction trong DB
         new_transaction = PaymentTransaction(
             invoice_id=invoice_id,
             user_id=user_id,
@@ -181,6 +214,9 @@ class PaymentService:
 
         if transaction.status == 'success':
             return transaction, "Giao dịch đã được xử lý thành công trước đó."
+
+        if final_status == "success" and transaction.status != "pending":
+            return None, f"Không thể xác nhận thanh toán khi giao dịch đang ở trạng thái '{transaction.status}'."
 
         # Valid payment statuses defined in the model
         valid_statuses = ["pending", "success", "failed", "expired"]
