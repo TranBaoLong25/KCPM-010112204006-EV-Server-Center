@@ -172,7 +172,7 @@ def test_history_my_route_unauthorized(client):
 def test_history_my_route_success(mock_get_hist, client, app):
     """Test lịch sử cá nhân thành công với JWT token hợp lệ"""
     # Khởi tạo mock database model
-    mock_tx = MagicMock(spec=PaymentTransaction)
+    mock_tx = MagicMock()
     mock_tx.to_dict.return_value = {"id": 1, "user_id": 10, "amount": 50000.0, "status": "success"}
     mock_get_hist.return_value = [mock_tx]
     
@@ -197,7 +197,7 @@ def test_history_all_route_forbidden_for_user(client, app):
 @patch('services.payment_service.PaymentService.get_all_history')
 def test_history_all_route_success_for_admin(mock_get_all, client, app):
     """Test lịch sử toàn hệ thống thành công đối với tài khoản Admin"""
-    mock_tx = MagicMock(spec=PaymentTransaction)
+    mock_tx = MagicMock()
     mock_tx.to_dict.return_value = {"id": 1, "user_id": 10, "amount": 50000.0, "status": "success"}
     mock_get_all.return_value = [mock_tx]
     
@@ -233,7 +233,7 @@ def test_internal_all_route_success(mock_get_all, client):
 def test_internal_due_soon_route_success(mock_get_all, client):
     """Test lấy các hóa đơn sắp hết hạn với X-Internal-Token"""
     # Tạo mock giao dịch pending
-    mock_tx = MagicMock(spec=PaymentTransaction)
+    mock_tx = MagicMock()
     mock_tx.id = 1
     mock_tx.user_id = 10
     mock_tx.amount = 50000.0
