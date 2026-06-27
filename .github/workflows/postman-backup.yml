@@ -1,0 +1,42 @@
+name: Backup Postman Collection
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: postman-backup
+
+      - name: Download Postman Collection
+        run: |
+          curl -L \
+            -H "X-Api-Key: ${{ secrets.POSTMAN_API_KEY }}" \
+            "https://api.getpostman.com/collections/55036832-a67f4af8-07c1-4e81-8a3e-376d1f3170a3" \
+            -o collection.json
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and Push if changed
+        run: |
+          git add collection.json
+
+          if git diff --cached --quiet; then
+            echo "No changes detected."
+          else
+            git commit -m "Auto backup Postman Collection"
+            git push origin postman-backup
+          fi
