@@ -14,6 +14,8 @@ PAYMENT_METHODS = db.Enum(
     name="payment_methods"
 )
 
+VALID_PAYMENT_METHODS = ["bank_transfer", "momo_qr"]
+
 class PaymentTransaction(db.Model):
     __tablename__ = "payment_transactions"
 
