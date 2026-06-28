@@ -1,0 +1,48 @@
+name: EV Service Center CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  user-service:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: services/user-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install pytest
+          pip install pytest-cov
+          pip install Flask
+          pip install Flask-SQLAlchemy
+          pip install Flask-JWT-Extended
+          pip install flask-cors
+          pip install Flask-Migrate
+          pip install requests
+          pip install python-dotenv
+
+      - name: Run pytest
+        run: |
+          pytest -v
+
+      - name: Run coverage
+        run: |
+          pytest --cov=. --cov-report=term
