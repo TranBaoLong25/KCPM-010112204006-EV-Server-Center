@@ -1,0 +1,10 @@
+======================= Test Results =======================
+
+Command:
+C:/Users/ADMIN/AppData/Local/Programs/Python/Python313/python.exe -m pytest -q tests
+
+Output:
+.....                                           [100%]
+5 passed in 1.67s
+
+Note: This file contains the pytest pass output from the last successful test run for notification-service.

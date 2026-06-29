@@ -22,6 +22,28 @@ class NotificationService:
             return None, "Missing required fields: user_id, title, message"
         
         try:
+            # Validation rules
+            if len(data["title"]) == 0 or len(data["title"]) > 255:
+                return None, "Error creating notification: title must be between 1 and 255 characters"
+
+            if len(data["message"]) == 0:
+                return None, "Error creating notification: message must not be empty"
+
+            valid_types = {"booking_status", "inventory_alert", "payment", "reminder", "system"}
+            valid_channels = {"in_app", "email", "sms", "push"}
+            valid_priorities = {"low", "medium", "high", "urgent"}
+
+            notification_type = data.get("notification_type", "system")
+            channel = data.get("channel", "in_app")
+            priority = data.get("priority", "medium")
+
+            if notification_type not in valid_types:
+                return None, "Error creating notification: invalid notification_type"
+            if channel not in valid_channels:
+                return None, "Error creating notification: invalid channel"
+            if priority not in valid_priorities:
+                return None, "Error creating notification: invalid priority"
+
             # Chuyển 'metadata' từ request thành 'extra_data' cho model
             extra_data_value = None
             if data.get("metadata"):
@@ -29,17 +51,21 @@ class NotificationService:
             elif data.get("extra_data"):
                 extra_data_value = json.dumps(data.get("extra_data")) if isinstance(data.get("extra_data"), dict) else data.get("extra_data")
 
+            scheduled_at = None
+            if data.get("scheduled_at"):
+                scheduled_at = datetime.fromisoformat(data["scheduled_at"])
+
             notification = Notification(
                 user_id=data["user_id"],
-                notification_type=data.get("notification_type", "system"),
+                notification_type=notification_type,
                 title=data["title"],
                 message=data["message"],
-                channel=data.get("channel", "in_app"),
-                priority=data.get("priority", "medium"),
+                channel=channel,
+                priority=priority,
                 related_entity_type=data.get("related_entity_type"),
                 related_entity_id=data.get("related_entity_id"),
                 extra_data=extra_data_value,
-                scheduled_at=datetime.fromisoformat(data["scheduled_at"]) if data.get("scheduled_at") else None
+                scheduled_at=scheduled_at
             )
             
             db.session.add(notification)
