@@ -121,7 +121,16 @@ class BookingService:
         user_data, user_error = BookingService._verify_user(user_id)
         if user_error:
             return None, user_error
-        
+        # Validate time range
+        try:
+            dt_start = datetime.fromisoformat(start_time)
+            dt_end = datetime.fromisoformat(end_time)
+        except Exception:
+            return None, "Định dạng thời gian không hợp lệ."
+
+        if dt_start >= dt_end:
+            return None, "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc."
+
         # 2. Kiểm tra trùng lịch
         if not BookingService.is_time_available(technician_id, station_id, start_time, end_time):
             return None, "Thời gian này đã có lịch hẹn trùng."
