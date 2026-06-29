@@ -1,9 +1,11 @@
 import json
 
+import pytest
 from services.notification_service import NotificationService
 from models.notification_model import Notification
 
 
+@pytest.mark.blackbox
 def test_create_notification_valid(app):
     data = {
         "user_id": 1,
@@ -24,6 +26,7 @@ def test_create_notification_valid(app):
     assert Notification.query.count() == 1
 
 
+@pytest.mark.blackbox
 def test_create_notification_missing_user_id(app):
     data = {
         "title": "Thông báo",
@@ -40,6 +43,7 @@ def test_create_notification_missing_user_id(app):
     assert "Missing required fields" in error
 
 
+@pytest.mark.blackbox
 def test_create_notification_invalid_scheduled_at(app):
     data = {
         "user_id": 1,
@@ -58,6 +62,7 @@ def test_create_notification_invalid_scheduled_at(app):
     assert "Error creating notification" in error
 
 
+@pytest.mark.blackbox
 def test_internal_create_notification_endpoint_success(client):
     payload = {
         "user_id": 2,
@@ -82,6 +87,7 @@ def test_internal_create_notification_endpoint_success(client):
     assert body["notification"]["user_id"] == 2
 
 
+@pytest.mark.blackbox
 def test_internal_create_notification_endpoint_unauthorized(client):
     payload = {
         "user_id": 2,
@@ -102,6 +108,7 @@ def test_internal_create_notification_endpoint_unauthorized(client):
     assert response.get_json()["error"] == "Unauthorized internal request"
 
 
+@pytest.mark.whitebox
 def test_create_notification_title_too_long(app):
     data = {
         "user_id": 1,
@@ -119,6 +126,7 @@ def test_create_notification_title_too_long(app):
     assert "Error creating notification" in error
 
 
+@pytest.mark.whitebox
 def test_create_notification_invalid_notification_type(app):
     data = {
         "user_id": 1,
@@ -136,6 +144,7 @@ def test_create_notification_invalid_notification_type(app):
     assert "Error creating notification" in error
 
 
+@pytest.mark.whitebox
 def test_create_notification_invalid_channel(app):
     data = {
         "user_id": 1,
@@ -152,6 +161,8 @@ def test_create_notification_invalid_channel(app):
     assert error is not None
     assert "Error creating notification" in error
 
+
+@pytest.mark.whitebox
 
 def test_create_notification_scheduled_at_valid(app):
     data = {
