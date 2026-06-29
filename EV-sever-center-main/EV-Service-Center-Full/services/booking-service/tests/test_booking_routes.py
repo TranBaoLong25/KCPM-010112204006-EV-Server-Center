@@ -9,10 +9,10 @@ from models.booking_model import Booking
 
 @pytest.mark.blackbox
 def test_create_booking_api_success(client, user_token):
-    with patch("services.booking_service.BookingService._verify_user") as mock_verify, patch(
+    with patch("services.booking_service.BookingService._verify_user") as mock_verify_user, patch(
         "services.booking_service.BookingService._notify_booking_created"
     ) as mock_notify:
-        mock_verify.return_value = ({"username": "apiuser"}, None)
+        mock_verify_user.return_value = ({"username": "apiuser"}, None)
         mock_notify.return_value = (True, "Notification skipped")
 
         payload = {
@@ -25,8 +25,7 @@ def test_create_booking_api_success(client, user_token):
 
         response = client.post(
             "/api/bookings/items",
-            data=json.dumps(payload),
-            content_type="application/json",
+            json=payload,
             headers={"Authorization": f"Bearer {user_token}"}
         )
 
@@ -42,13 +41,12 @@ def test_create_booking_api_success(client, user_token):
 def test_create_booking_missing_service_type(client, user_token):
     response = client.post(
         "/api/bookings/items",
-        data=json.dumps({
+        json={
             "technician_id": 2,
             "station_id": 3,
             "start_time": "2026-07-01T08:00:00",
             "end_time": "2026-07-01T09:00:00"
-        }),
-        content_type="application/json",
+        },
         headers={"Authorization": f"Bearer {user_token}"}
     )
 
@@ -58,19 +56,18 @@ def test_create_booking_missing_service_type(client, user_token):
 
 @pytest.mark.blackbox
 def test_create_booking_invalid_time(client, user_token):
-    with patch("services.booking_service.BookingService._verify_user") as mock_verify:
-        mock_verify.return_value = ({"username": "apiuser"}, None)
+    with patch("services.booking_service.BookingService._verify_user") as mock_verify_user:
+        mock_verify_user.return_value = ({"username": "apiuser"}, None)
 
         response = client.post(
             "/api/bookings/items",
-            data=json.dumps({
+            json={
                 "service_type": "Bảo dưỡng",
                 "technician_id": 2,
                 "station_id": 3,
                 "start_time": "2026-07-01T10:00:00",
                 "end_time": "2026-07-01T09:00:00"
-            }),
-            content_type="application/json",
+            },
             headers={"Authorization": f"Bearer {user_token}"}
         )
 
@@ -107,8 +104,7 @@ def test_create_service_center_admin_success(client, admin_token):
 
     response = client.post(
         "/api/bookings/centers",
-        data=json.dumps(payload),
-        content_type="application/json",
+        json=payload,
         headers={"Authorization": f"Bearer {admin_token}"}
     )
 
