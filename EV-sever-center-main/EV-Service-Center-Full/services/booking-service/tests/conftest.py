@@ -76,43 +76,62 @@ def bypass_jwt(monkeypatch):
     yield
 
 
-# Collect passed tests and write a proof file when the whole session succeeds
+# Collect test outcomes and write a report when the session finishes.
 _passed_tests = []
+_failed_tests = []
+_skipped_tests = []
 
 
 def pytest_runtest_logreport(report):
-    # collect call-phase passed tests
     try:
-        if report.when == "call" and report.passed:
+        if report.when != "call":
+            return
+
+        if report.passed:
             _passed_tests.append(report.nodeid)
+        elif report.failed:
+            _failed_tests.append(report.nodeid)
+        elif report.skipped:
+            _skipped_tests.append(report.nodeid)
     except Exception:
         pass
 
 
 def pytest_sessionfinish(session, exitstatus):
-    # exitstatus == 0 means all tests passed
-    if exitstatus == 0:
-        try:
-            import os
-            import datetime
+    try:
+        import os
+        import datetime
 
-            out_dir = os.path.join(os.getcwd(), "test_results")
-            os.makedirs(out_dir, exist_ok=True)
-            ts = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-            out_file = os.path.join(out_dir, f"pytest_pass_{ts}.md")
-            with open(out_file, "w", encoding="utf-8") as f:
-                f.write("# Pytest Passed Report\n\n")
-                f.write(f"Timestamp (UTC): {ts}\n\n")
-                try:
-                    total = len(session.items)
-                except Exception:
-                    total = "unknown"
-                f.write(f"Total collected tests: {total}\n")
-                f.write(f"Passed tests: {len(_passed_tests)}\n\n")
-                f.write("## Passed Tests\n\n")
-                for nodeid in _passed_tests:
-                    f.write(f"- {nodeid}\n")
-            # print path so CI or local run captures it
-            print(f"Saved pytest pass report: {out_file}")
-        except Exception as e:
-            print(f"Failed to write pytest pass report: {e}")
+        out_dir = os.path.join(os.getcwd(), "test_results")
+        os.makedirs(out_dir, exist_ok=True)
+        ts = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        out_file = os.path.join(out_dir, f"pytest_report_{ts}.md")
+
+        with open(out_file, "w", encoding="utf-8") as f:
+            f.write("# Pytest Test Report\n\n")
+            f.write(f"Timestamp (UTC): {ts}\n\n")
+            try:
+                total = len(session.items)
+            except Exception:
+                total = "unknown"
+            f.write(f"Total collected tests: {total}\n")
+            f.write(f"Passed: {len(_passed_tests)}\n")
+            f.write(f"Failed: {len(_failed_tests)}\n")
+            f.write(f"Skipped: {len(_skipped_tests)}\n")
+            f.write(f"Exit status: {exitstatus}\n\n")
+
+            f.write("## Passed Tests\n\n")
+            for nodeid in _passed_tests:
+                f.write(f"- {nodeid}\n")
+
+            f.write("\n## Failed Tests\n\n")
+            for nodeid in _failed_tests:
+                f.write(f"- {nodeid}\n")
+
+            f.write("\n## Skipped Tests\n\n")
+            for nodeid in _skipped_tests:
+                f.write(f"- {nodeid}\n")
+
+        print(f"Saved pytest report: {out_file}")
+    except Exception as e:
+        print(f"Failed to write pytest report: {e}")
