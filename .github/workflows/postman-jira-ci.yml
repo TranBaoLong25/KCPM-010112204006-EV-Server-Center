@@ -15,14 +15,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Start Docker services
+        working-directory: EV-sever-center-main/EV-Service-Center-Full
         run: |
           docker compose up -d --build
-          sleep 40
+          sleep 60
 
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Newman
         run: npm install -g newman
