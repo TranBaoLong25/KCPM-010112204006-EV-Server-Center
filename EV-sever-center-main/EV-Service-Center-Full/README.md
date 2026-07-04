@@ -1,12 +1,10 @@
+# quét frontend
+
+npx playwright test
+
 # Quét Sonar
 
-cd D:\KCPM-010112204006-EV-Server-Center\EV-sever-center-main\EV-Service-Center-Full
-
-& "D:\Download\sonar-scanner-cli-8.0.1.6346-windows-x64\sonar-scanner-8.0.1.6346-windows-x64\bin\sonar-scanner.bat" `"-Dsonar.host.url=http://localhost:9000"`
-"-Dsonar.token=sqp_3ff1981bf630063054852b4343f1be1ee9948f9b"
-
-& "C:\Program Files\nodejs\node.exe" .\node_modules\@playwright\test\cli.js test
-& "C:\Program Files\nodejs\node.exe" .\node_modules\@playwright\test\cli.js show-report
+& "D:\Download\sonar-scanner-cli-8.0.1.6346-windows-x64\sonar-scanner-8.0.1.6346-windows-x64\bin\sonar-scanner.bat" "-Dsonar.host.url=http://localhost:9000" "-Dsonar.token=sqp_3ff1981bf630063054852b4343f1be1ee9948f9b"
 
 pytest --cov=. --cov-report=term --cov-report=html
 

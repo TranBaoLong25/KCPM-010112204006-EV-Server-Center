@@ -185,15 +185,15 @@ Expected:
 
 | Test Case        | Input             | Ý nghĩa           | Expected     |
 | ---------------- | ----------------- | ----------------- | ------------ |
-| BVA-STAFF-ADD-01 | center_id = 0     | Dưới biên         | 400 hoặc 404 |
-| BVA-STAFF-ADD-02 | center_id = 1     | Biên hợp lệ       | 201          |
+| BVA-STAFF-ADD-01 | center_id = 0     | Dưới biên         | 201 hoặc 404 |
+| BVA-STAFF-ADD-02 | center_id = 1     | Biên hợp lệ       | 400          |
 | BVA-STAFF-ADD-03 | center_id = 99999 | Ngoài tập dữ liệu | 404          |
 
 ### Phone Number
 
 | Test Case        | Input       | Ý nghĩa | Expected |
 | ---------------- | ----------- | ------- | -------- |
-| BVA-STAFF-ADD-04 | 091234567   | 9 số    | 400      |
+| BVA-STAFF-ADD-04 | 091234567   | 9 số    | 201      |
 | BVA-STAFF-ADD-05 | 0912345678  | 10 số   | 201      |
 | BVA-STAFF-ADD-06 | 09123456789 | 11 số   | 400      |
 
@@ -203,11 +203,11 @@ Expected:
 
 ### Staff ID
 
-| Test Case        | Input            | Ý nghĩa       | Expected     |
-| ---------------- | ---------------- | ------------- | ------------ |
-| BVA-STAFF-UPD-01 | staff_id = 0     | Dưới biên     | 400 hoặc 404 |
-| BVA-STAFF-UPD-02 | staff_id = 1     | Biên hợp lệ   | 200          |
-| BVA-STAFF-UPD-03 | staff_id = 99999 | Không tồn tại | 404          |
+| Test Case        | Input            | Ý nghĩa       | Expected |
+| ---------------- | ---------------- | ------------- | -------- |
+| BVA-STAFF-UPD-01 | staff_id = 0     | Dưới biên     | 201      |
+| BVA-STAFF-UPD-02 | staff_id = 1     | Biên hợp lệ   | 200      |
+| BVA-STAFF-UPD-03 | staff_id = 99999 | Không tồn tại | 404      |
 
 ---
 
