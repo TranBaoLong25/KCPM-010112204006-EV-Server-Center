@@ -1,4 +1,4 @@
-name: Postman API Tests with Jira
+name: Postman API Tests with Jira Bugs
 
 on:
   workflow_dispatch:
@@ -36,12 +36,12 @@ jobs:
             --reporters cli,json \
             --reporter-json-export newman-report.json
 
-      - name: Create Jira bugs for failed Postman tests
+      - name: Create Jira bugs for failed tests
         if: steps.newman.outcome == 'failure'
         env:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          JIRA_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
           node <<'NODE'
@@ -49,46 +49,52 @@ jobs:
 
           const report = JSON.parse(fs.readFileSync("newman-report.json", "utf8"));
           const executions = report.run.executions || [];
+          const fails = [];
 
-          const failedItems = [];
+          for (const ex of executions) {
+            const requestName = ex.item?.name || "Unknown request";
+            const folderPath = ex.cursor?.ref || "";
+            const method = ex.request?.method || "N/A";
+            const url = ex.request?.url?.raw || "N/A";
 
-          for (const execution of executions) {
-            const itemName = execution.item?.name || "Unknown Postman request";
-            const assertions = execution.assertions || [];
-
-            for (const assertion of assertions) {
+            for (const assertion of ex.assertions || []) {
               if (assertion.error) {
-                failedItems.push({
-                  itemName,
-                  assertionName: assertion.assertion || "Unknown assertion",
-                  errorMessage: assertion.error.message || "Unknown error"
+                fails.push({
+                  requestName,
+                  assertion: assertion.assertion || "Unknown assertion",
+                  error: assertion.error.message || "Unknown error",
+                  method,
+                  url
                 });
               }
             }
           }
 
-          const limitedFails = failedItems.slice(0, 10);
+          const selectedFails = fails.slice(0, 20);
 
-          async function createJiraIssue(fail) {
-            const summary = `[API TEST FAILED] ${fail.itemName}`;
+          const auth = Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_TOKEN}`).toString("base64");
+
+          async function createBug(fail) {
+            const summary = `[API BUG] ${fail.requestName}`.slice(0, 250);
 
             const descriptionText =
-          `Postman/Newman testcase failed.
+          `Postman test failed automatically.
 
-          Testcase: ${fail.itemName}
-          Assertion: ${fail.assertionName}
-          Error: ${fail.errorMessage}
+          Testcase: ${fail.requestName}
+          Assertion: ${fail.assertion}
+          Error: ${fail.error}
+
+          Method: ${fail.method}
+          URL: ${fail.url}
 
           Repository: ${process.env.GITHUB_REPOSITORY}
           Branch: ${process.env.GITHUB_REF_NAME}
           Commit: ${process.env.GITHUB_SHA}
-          Workflow run: ${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+          Workflow: ${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
 
             const payload = {
               fields: {
-                project: {
-                  key: process.env.JIRA_PROJECT_KEY
-                },
+                project: { key: process.env.JIRA_PROJECT_KEY },
                 summary,
                 description: {
                   type: "doc",
@@ -97,52 +103,42 @@ jobs:
                     {
                       type: "paragraph",
                       content: [
-                        {
-                          type: "text",
-                          text: descriptionText
-                        }
+                        { type: "text", text: descriptionText }
                       ]
                     }
                   ]
                 },
-                issuetype: {
-                  name: "Bug"
-                }
+                issuetype: { name: "Bug" },
+                labels: ["postman-fail", "api-bug", "github-actions"]
               }
             };
 
-            const auth = Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_TOKEN}`).toString("base64");
-
-            const response = await fetch(`${process.env.JIRA_BASE_URL}/rest/api/3/issue`, {
+            const res = await fetch(`${process.env.JIRA_BASE_URL}/rest/api/3/issue`, {
               method: "POST",
               headers: {
-                "Authorization": `Basic ${auth}`,
-                "Accept": "application/json",
+                Authorization: `Basic ${auth}`,
+                Accept: "application/json",
                 "Content-Type": "application/json"
               },
               body: JSON.stringify(payload)
             });
 
-            const result = await response.text();
+            const text = await res.text();
 
-            if (!response.ok) {
-              console.error("Failed to create Jira issue:", response.status, result);
+            if (!res.ok) {
+              console.error("Failed to create Jira bug:", res.status, text);
               process.exitCode = 1;
             } else {
-              console.log("Created Jira issue:", result);
+              console.log("Created Jira bug:", text);
             }
           }
 
           (async () => {
-            if (limitedFails.length === 0) {
-              console.log("No failed assertions found in Newman report.");
-              return;
-            }
+            console.log(`Found ${fails.length} failed assertions.`);
+            console.log(`Creating ${selectedFails.length} Jira bug(s).`);
 
-            console.log(`Creating ${limitedFails.length} Jira bug(s)...`);
-
-            for (const fail of limitedFails) {
-              await createJiraIssue(fail);
+            for (const fail of selectedFails) {
+              await createBug(fail);
             }
           })();
           NODE
