@@ -1,33 +1,50 @@
-name: Postman API Tests with Jira
+- name: Run Postman Collection
+  id: newman
+  continue-on-error: true
+  run: |
+    newman run postman/EV-Server-Center.postman_collection.json 2>&1 | tee newman-result.log
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+- name: Create Jira bug if Postman fails
+  if: steps.newman.outcome == 'failure'
+  run: |
+    SUMMARY="[API TEST FAILED] Postman collection failed on GitHub Actions"
 
-jobs:
-  postman-tests:
-    runs-on: ubuntu-latest
+    DESCRIPTION="Postman/Newman test failed.\n\nRepo: $GITHUB_REPOSITORY\nBranch: $GITHUB_REF_NAME\nCommit: $GITHUB_SHA\nWorkflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\n\nLog:\n$(tail -n 80 newman-result.log)"
 
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+    jq -n \
+      --arg project "${{ secrets.JIRA_PROJECT_KEY }}" \
+      --arg summary "$SUMMARY" \
+      --arg description "$DESCRIPTION" \
+      '{
+        fields: {
+          project: { key: $project },
+          summary: $summary,
+          description: {
+            type: "doc",
+            version: 1,
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "text",
+                    text: $description
+                  }
+                ]
+              }
+            ]
+          },
+          issuetype: { name: "Bug" }
+        }
+      }' > jira-payload.json
 
-      - name: Start Docker services
-        working-directory: EV-sever-center-main/EV-Service-Center-Full
-        run: |
-          docker compose up -d --build
-          sleep 60
+    curl -X POST \
+      -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_TOKEN }}" \
+      -H "Accept: application/json" \
+      -H "Content-Type: application/json" \
+      --data @jira-payload.json \
+      "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue"
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install Newman
-        run: npm install -g newman
-
-      - name: Run Postman Collection
-        run: |
-          newman run postman/EV-Server-Center.postman_collection.json
+- name: Fail workflow after Jira bug created
+  if: steps.newman.outcome == 'failure'
+  run: exit 1
