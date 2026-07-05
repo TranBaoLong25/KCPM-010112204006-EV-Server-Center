@@ -349,17 +349,17 @@ class PaymentService:
     @staticmethod
     def expire_pending_transactions():
         """
-        Tự động hủy các giao dịch pending quá 1 phút
+        Tự động hủy các giao dịch pending quá 15 phút
         Được gọi định kỳ bởi scheduler
         """
         try:
-            # Tính thời gian 1 phút trước
-            one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
+            # Tính thời gian 15 phút trước
+            fifteen_minutes_ago = datetime.utcnow() - timedelta(minutes=15)
 
             # Tìm tất cả giao dịch pending quá 1 phút
             expired_transactions = PaymentTransaction.query.filter(
                 PaymentTransaction.status == 'pending',
-                PaymentTransaction.created_at < one_minute_ago
+                PaymentTransaction.created_at < expiration_time
             ).all()
 
             expired_count = 0

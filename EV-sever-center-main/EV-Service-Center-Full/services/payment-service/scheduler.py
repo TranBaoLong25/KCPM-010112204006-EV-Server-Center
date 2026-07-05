@@ -30,13 +30,13 @@ def init_scheduler(app):
     scheduler.add_job(
         func=expire_pending_payments,
         trigger="interval",
-        minutes=1,
+        minutes=15,
         id="expire_pending_payments",
-        name="Hủy giao dịch pending quá 1 phút",
+        name="Hủy giao dịch pending quá 15 phút",
         replace_existing=True
     )
 
     scheduler.start()
-    logger.info("✅ Payment expiration scheduler started - checking every 1 minute")
+    logger.info("✅ Payment expiration scheduler started - checking every 15 minute")
 
     return scheduler
