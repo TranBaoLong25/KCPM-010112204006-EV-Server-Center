@@ -354,9 +354,9 @@ class PaymentService:
         """
         try:
             # Tính thời gian 15 phút trước
-            fifteen_minutes_ago = datetime.utcnow() - timedelta(minutes=15)
+            expiration_time = datetime.utcnow() - timedelta(minutes=15)
 
-            # Tìm tất cả giao dịch pending quá 1 phút
+            # Tìm tất cả giao dịch pending quá 15 phút
             expired_transactions = PaymentTransaction.query.filter(
                 PaymentTransaction.status == 'pending',
                 PaymentTransaction.created_at < expiration_time
