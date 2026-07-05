@@ -105,11 +105,18 @@ class BookingService:
             return None, "Thiếu thông tin đặt lịch bắt buộc."
         
         user_id = data['user_id']
+        service_type = data['service_type']
         start_time = data['start_time']
         end_time = data['end_time']
         technician_id = data['technician_id']
         station_id = data['station_id']
         center_id = data.get('center_id') # Lấy center_id (có thể null nếu legacy)
+
+        if any(
+            value is None or (isinstance(value, str) and not str(value).strip())
+            for value in [user_id, service_type, technician_id, station_id, start_time, end_time]
+        ):
+            return None, "Thiếu thông tin đặt lịch bắt buộc."
         
         # Check center valid if provided
         if center_id:
@@ -121,7 +128,16 @@ class BookingService:
         user_data, user_error = BookingService._verify_user(user_id)
         if user_error:
             return None, user_error
-        
+        # Validate time range
+        try:
+            dt_start = datetime.fromisoformat(start_time)
+            dt_end = datetime.fromisoformat(end_time)
+        except Exception:
+            return None, "Định dạng thời gian không hợp lệ."
+
+        if dt_start >= dt_end:
+            return None, "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc."
+
         # 2. Kiểm tra trùng lịch
         if not BookingService.is_time_available(technician_id, station_id, start_time, end_time):
             return None, "Thời gian này đã có lịch hẹn trùng."

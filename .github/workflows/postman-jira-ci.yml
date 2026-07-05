@@ -1,0 +1,148 @@
+name: Postman API Tests with Jira Bugs
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  postman-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Start Docker services
+        working-directory: EV-sever-center-main/EV-Service-Center-Full
+        run: |
+          docker compose up -d --build
+          sleep 90
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Run Postman Collection
+        id: newman
+        continue-on-error: true
+        run: |
+          newman run postman/EV-Server-Center.postman_collection.json \
+            --reporters cli,json \
+            --reporter-json-export newman-report.json
+
+      - name: Create Jira bugs for failed tests
+        if: steps.newman.outcome == 'failure'
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const report = JSON.parse(fs.readFileSync("newman-report.json", "utf8"));
+          const executions = report.run.executions || [];
+          const fails = [];
+
+          for (const ex of executions) {
+            const requestName = ex.item?.name || "Unknown request";
+            const folderPath = ex.cursor?.ref || "";
+            const method = ex.request?.method || "N/A";
+            const url = ex.request?.url?.raw || "N/A";
+
+            for (const assertion of ex.assertions || []) {
+              if (assertion.error) {
+                fails.push({
+                  requestName,
+                  assertion: assertion.assertion || "Unknown assertion",
+                  error: assertion.error.message || "Unknown error",
+                  method,
+                  url
+                });
+              }
+            }
+          }
+
+          const selectedFails = fails.slice(0, 20);
+
+          const auth = Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_TOKEN}`).toString("base64");
+
+          async function createBug(fail) {
+            const summary = `[API BUG] ${fail.requestName}`.slice(0, 250);
+
+            const descriptionText =
+          `Postman test failed automatically.
+
+          Testcase: ${fail.requestName}
+          Assertion: ${fail.assertion}
+          Error: ${fail.error}
+
+          Method: ${fail.method}
+          URL: ${fail.url}
+
+          Repository: ${process.env.GITHUB_REPOSITORY}
+          Branch: ${process.env.GITHUB_REF_NAME}
+          Commit: ${process.env.GITHUB_SHA}
+          Workflow: ${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+
+            const payload = {
+              fields: {
+                project: { key: process.env.JIRA_PROJECT_KEY },
+                summary,
+                description: {
+                  type: "doc",
+                  version: 1,
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: descriptionText }
+                      ]
+                    }
+                  ]
+                },
+                issuetype: { name: "Bug" },
+                labels: ["postman-fail","bug", "api-bug", "github-actions"]
+              }
+            };
+
+            const res = await fetch(`${process.env.JIRA_BASE_URL}/rest/api/3/issue`, {
+              method: "POST",
+              headers: {
+                Authorization: `Basic ${auth}`,
+                Accept: "application/json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(payload)
+            });
+
+            const text = await res.text();
+
+            if (!res.ok) {
+              console.error("Failed to create Jira bug:", res.status, text);
+              process.exitCode = 1;
+            } else {
+              console.log("Created Jira bug:", text);
+            }
+          }
+
+          (async () => {
+            console.log(`Found ${fails.length} failed assertions.`);
+            console.log(`Creating ${selectedFails.length} Jira bug(s).`);
+
+            for (const fail of selectedFails) {
+              await createBug(fail);
+            }
+          })();
+          NODE
+
+      - name: Fail workflow after Jira bugs created
+        if: steps.newman.outcome == 'failure'
+        run: exit 1

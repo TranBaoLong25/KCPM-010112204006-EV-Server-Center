@@ -62,6 +62,14 @@ def get_bookings():
 @booking_bp.route("/items", methods=["POST"])
 @jwt_required()
 def create_booking_route():
+    # Debug logs for tests: record incoming headers and raw body to diagnose 422
+    try:
+        # Use print so pytest -s shows the values reliably during tests
+        print("AUTH HEADERS:", dict(request.headers))
+        print("RAW BODY:", request.get_data(as_text=True))
+    except Exception:
+        pass
+
     data = request.json
     
     current_user_id = get_jwt_identity()
