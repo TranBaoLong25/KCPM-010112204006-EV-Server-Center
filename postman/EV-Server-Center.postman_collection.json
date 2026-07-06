@@ -4058,6 +4058,68 @@
         },
         {
           "name": "[Maintenance-services] - BVA & Equivalence",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const adminToken = pm.environment.get(\"admin_token\");",
+                  "const staffToken = pm.environment.get(\"staff_token\");",
+                  "",
+                  "if (!adminToken) {",
+                  "    console.log(\"No admin_token found, logging in dynamically...\");",
+                  "    pm.sendRequest({",
+                  "        url: 'http://localhost/api/login',",
+                  "        method: 'POST',",
+                  "        header: { 'Content-Type': 'application/json' },",
+                  "        body: {",
+                  "            mode: 'raw',",
+                  "            raw: JSON.stringify({",
+                  "                email_username: 'testuser_nh11112111444om7@gmail.com',",
+                  "                password: 'MậtKhẩuBảoMật123!'",
+                  "            })",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        if (!err && res.code === 200) {",
+                  "            const token = res.json().access_token;",
+                  "            pm.environment.set(\"admin_token\", token);",
+                  "            pm.environment.set(\"authorization_secret\", token);",
+                  "            console.log(\"Dynamically obtained admin_token!\");",
+                  "        } else {",
+                  "            console.log(\"Failed to login as admin dynamically.\");",
+                  "        }",
+                  "    });",
+                  "} else {",
+                  "    pm.environment.set(\"authorization_secret\", adminToken);",
+                  "}",
+                  "",
+                  "if (!staffToken) {",
+                  "    console.log(\"No staff_token found, logging in dynamically...\");",
+                  "    pm.sendRequest({",
+                  "        url: 'http://localhost/api/login',",
+                  "        method: 'POST',",
+                  "        header: { 'Content-Type': 'application/json' },",
+                  "        body: {",
+                  "            mode: 'raw',",
+                  "            raw: JSON.stringify({",
+                  "                email_username: 'testuser@example.com',",
+                  "                password: 'MậtKhẩuBảoMật123!'",
+                  "            })",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        if (!err && res.code === 200) {",
+                  "            pm.environment.set(\"staff_token\", res.json().access_token);",
+                  "            console.log(\"Dynamically obtained staff_token!\");",
+                  "        } else {",
+                  "            console.log(\"Failed to login as staff dynamically.\");",
+                  "        }",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "item": [
             {
               "name": ".EP-MAINT-LIST-01 Có token hợp lệ",
@@ -11802,7 +11864,14 @@
         "packages": {},
         "requests": {},
         "exec": [
-          ""
+          "// Sync authorization_secret dynamically from admin_token or access_token",
+          "const adminToken = pm.environment.get(\"admin_token\");",
+          "const accessToken = pm.environment.get(\"access_token\");",
+          "if (adminToken) {",
+          "    pm.environment.set(\"authorization_secret\", adminToken);",
+          "} else if (accessToken) {",
+          "    pm.environment.set(\"authorization_secret\", accessToken);",
+          "}"
         ]
       }
     },

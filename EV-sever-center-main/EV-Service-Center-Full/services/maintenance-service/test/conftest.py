@@ -40,7 +40,11 @@ def client(app):
 @pytest.fixture()
 def app_context(app):
     with app.app_context():
+        for table in reversed(db.metadata.sorted_tables):
+            db.session.execute(table.delete())
+        db.session.commit()
         yield
+        db.session.rollback()
 
 
 @pytest.fixture()

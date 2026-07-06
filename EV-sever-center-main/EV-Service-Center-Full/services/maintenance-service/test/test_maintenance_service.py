@@ -365,7 +365,7 @@ def test_update_checklist_success(app_context):
         task.task_id, "Battery", "pending"
     )
     updated, error = MaintenanceService.update_checklist_item(
-        item.item_id, status="completed", note="OK", current_user_id=301
+        item.id, status="completed", note="OK", current_user_id=301
     )
     assert error is None
     assert updated.status == "completed"
@@ -397,7 +397,7 @@ def test_update_checklist_permission_denied(app_context):
         task.task_id, "Engine", "pending"
     )
     updated, error = MaintenanceService.update_checklist_item(
-        item.item_id, status="completed", current_user_id=999
+        item.id, status="completed", current_user_id=999
     )
     assert updated is None
     assert error == "Bạn không có quyền cập nhật checklist này"
@@ -418,7 +418,7 @@ def test_remove_checklist_success(app_context):
     item, _ = MaintenanceService.add_checklist_item(
         task.task_id, "Cooling System", "pending"
     )
-    result, error = MaintenanceService.remove_checklist_item(item.item_id)
+    result, error = MaintenanceService.remove_checklist_item(item.id)
     assert result is True
     assert error is None
 
