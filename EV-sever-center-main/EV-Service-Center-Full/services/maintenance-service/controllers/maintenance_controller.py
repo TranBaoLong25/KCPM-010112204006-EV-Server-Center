@@ -56,7 +56,6 @@ def _check_task_permission(task_id, current_user_id, claims, required_roles=None
 
 # 1. ADMIN: CREATE TASK (POST /api/maintenance/tasks)
 @maintenance_bp.route("/tasks", methods=["POST"])
-@jwt_required()
 @admin_required()
 def create_maintenance_task():
     data = request.json
@@ -85,9 +84,21 @@ def create_maintenance_task():
 
 # 2. ADMIN: GET ALL TASKS (GET /api/maintenance/tasks)
 @maintenance_bp.route("/tasks", methods=["GET"])
-@jwt_required()
 @admin_required()
 def get_all_tasks_route():
+    task_id_arg = request.args.get("id")
+    if task_id_arg is not None:
+        try:
+            task_id = int(task_id_arg)
+        except ValueError:
+            return jsonify({"error": "Mã công việc phải là số nguyên"}), 400
+        
+        task = service.get_task_by_id(task_id)
+        if not task:
+            return jsonify({"error": "Không tìm thấy Công việc."}), 404
+            
+        return jsonify(task.to_dict()), 200
+
     tasks = service.get_all_tasks()
     return jsonify([t.to_dict() for t in tasks]), 200
 

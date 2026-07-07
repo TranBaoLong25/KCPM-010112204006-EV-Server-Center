@@ -1,0 +1,166 @@
+name: Postman to Jira Sync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-postman-to-jira:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Sync Postman testcases to Jira
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const collectionPath = "postman/EV-Server-Center.postman_collection.json";
+
+          if (!fs.existsSync(collectionPath)) {
+            console.error("Postman collection not found:", collectionPath);
+            process.exit(1);
+          }
+
+          const collection = JSON.parse(fs.readFileSync(collectionPath, "utf8"));
+          const testcases = [];
+
+          function walk(items, folderPath = []) {
+            for (const item of items || []) {
+              if (item.item) {
+                walk(item.item, [...folderPath, item.name]);
+              } else {
+                testcases.push({
+                  name: item.name || "Unnamed request",
+                  folder: folderPath.join(" / "),
+                  method: item.request?.method || "N/A",
+                  url:
+                    typeof item.request?.url === "string"
+                      ? item.request.url
+                      : item.request?.url?.raw || "N/A"
+                });
+              }
+            }
+          }
+
+          walk(collection.item || []);
+
+          console.log(`Found ${testcases.length} Postman testcases.`);
+
+          async function jiraRequest(jqlOrPayload, mode) {
+            const auth = Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_TOKEN}`).toString("base64");
+
+            if (mode === "search") {
+              const url = `${process.env.JIRA_BASE_URL}/rest/api/3/search/jql?jql=${encodeURIComponent(jqlOrPayload)}&maxResults=1`;
+              const res = await fetch(url, {
+                headers: {
+                  Authorization: `Basic ${auth}`,
+                  Accept: "application/json"
+                }
+              });
+              return { ok: res.ok, status: res.status, text: await res.text() };
+            }
+
+            const res = await fetch(`${process.env.JIRA_BASE_URL}/rest/api/3/issue`, {
+              method: "POST",
+              headers: {
+                Authorization: `Basic ${auth}`,
+                Accept: "application/json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(jqlOrPayload)
+            });
+
+            return { ok: res.ok, status: res.status, text: await res.text() };
+          }
+
+          function safeSummary(text) {
+            return text.replace(/\s+/g, " ").trim().slice(0, 250);
+          }
+
+          async function issueExists(summary) {
+            const escaped = summary.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+            const jql = `project = ${process.env.JIRA_PROJECT_KEY} AND summary ~ "\\"${escaped}\\""`;
+            const result = await jiraRequest(jql, "search");
+
+            if (!result.ok) {
+              console.log("Jira search failed:", result.status, result.text);
+              return false;
+            }
+
+            const data = JSON.parse(result.text);
+            return (data.issues || []).length > 0;
+          }
+
+          async function createIssue(testcase) {
+            const summary = safeSummary(`[POSTMAN TESTCASE] ${testcase.name}`);
+
+            const exists = await issueExists(summary);
+            if (exists) {
+              console.log("Skipped existing:", summary);
+              return;
+            }
+
+            const descriptionText =
+          `Postman testcase synced automatically.
+
+          Folder: ${testcase.folder || "Root"}
+          Request: ${testcase.name}
+          Method: ${testcase.method}
+          URL: ${testcase.url}
+
+          Source:
+          postman/EV-Server-Center.postman_collection.json`;
+
+            const payload = {
+              fields: {
+                project: { key: process.env.JIRA_PROJECT_KEY },
+                summary,
+                description: {
+                  type: "doc",
+                  version: 1,
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [
+                        {
+                          type: "text",
+                          text: descriptionText
+                        }
+                      ]
+                    }
+                  ]
+                },
+                issuetype: { name: "Task" },
+                labels: ["postman", "api-test"]
+              }
+            };
+
+            const result = await jiraRequest(payload, "create");
+
+            if (!result.ok) {
+              console.error("Failed:", summary);
+              console.error(result.status, result.text);
+              process.exitCode = 1;
+            } else {
+              console.log("Created:", summary);
+            }
+          }
+
+          const MAX_TO_CREATE = 200;
+          const selected = testcases.slice(0, MAX_TO_CREATE);
+
+          console.log(`Syncing ${selected.length}/${testcases.length} testcases to Jira...`);
+
+          (async () => {
+            for (const testcase of selected) {
+              await createIssue(testcase);
+            }
+          })();
+          NODE

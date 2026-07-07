@@ -1,0 +1,162 @@
+name: Postman Passed Tests to Jira Done
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pass-to-done:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Start Docker services
+        working-directory: EV-sever-center-main/EV-Service-Center-Full
+        run: |
+          docker compose up -d --build
+          sleep 90
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Run Postman Collection
+        id: newman
+        continue-on-error: true
+        run: |
+          newman run postman/EV-Server-Center.postman_collection.json \
+            --reporters cli,json \
+            --reporter-json-export newman-report.json
+
+      - name: Move passed Postman testcases to DONE
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const report = JSON.parse(fs.readFileSync("newman-report.json", "utf8"));
+          const executions = report.run.executions || [];
+
+          const passedRequests = [];
+
+          for (const ex of executions) {
+            const requestName = ex.item?.name || "Unknown request";
+            const assertions = ex.assertions || [];
+
+            if (assertions.length === 0) continue;
+
+            const hasFail = assertions.some(a => a.error);
+            const hasPass = assertions.some(a => !a.error);
+
+            if (hasPass && !hasFail) {
+              passedRequests.push(requestName);
+            }
+          }
+
+          const uniquePassed = [...new Set(passedRequests)];
+          const selectedPassed = uniquePassed.slice(0, 50);
+
+          console.log(`Found ${uniquePassed.length} passed Postman request(s).`);
+          console.log(`Moving ${selectedPassed.length} Jira testcase task(s) to DONE...`);
+
+          const auth = Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_TOKEN}`).toString("base64");
+
+          async function jiraGet(url) {
+            const res = await fetch(url, {
+              headers: {
+                Authorization: `Basic ${auth}`,
+                Accept: "application/json"
+              }
+            });
+            return { ok: res.ok, status: res.status, text: await res.text() };
+          }
+
+          async function jiraPost(url, payload) {
+            const res = await fetch(url, {
+              method: "POST",
+              headers: {
+                Authorization: `Basic ${auth}`,
+                Accept: "application/json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(payload)
+            });
+            return { ok: res.ok, status: res.status, text: await res.text() };
+          }
+
+          function escapeJqlText(text) {
+            return text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+          }
+
+          async function findTestcaseIssue(requestName) {
+            const summary = `[POSTMAN TESTCASE] ${requestName}`;
+            const escaped = escapeJqlText(summary);
+
+            const jql = `project = ${process.env.JIRA_PROJECT_KEY} AND summary ~ "\\"${escaped}\\""`;
+            const url = `${process.env.JIRA_BASE_URL}/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&maxResults=1`;
+
+            const result = await jiraGet(url);
+
+            if (!result.ok) {
+              console.log("Jira search failed:", result.status, result.text);
+              return null;
+            }
+
+            const data = JSON.parse(result.text);
+            return (data.issues || [])[0] || null;
+          }
+
+          async function moveIssueToDone(issueKey) {
+            const transUrl = `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${issueKey}/transitions`;
+            const transResult = await jiraGet(transUrl);
+
+            if (!transResult.ok) {
+              console.log(`Cannot get transitions for ${issueKey}:`, transResult.status, transResult.text);
+              return;
+            }
+
+            const transData = JSON.parse(transResult.text);
+            const doneTransition = (transData.transitions || []).find(t =>
+              String(t.name || "").toUpperCase() === "DONE"
+            );
+
+            if (!doneTransition) {
+              console.log(`No DONE transition found for ${issueKey}`);
+              return;
+            }
+
+            const moveResult = await jiraPost(transUrl, {
+              transition: {
+                id: doneTransition.id
+              }
+            });
+
+            if (!moveResult.ok) {
+              console.log(`Failed to move ${issueKey} to DONE:`, moveResult.status, moveResult.text);
+            } else {
+              console.log(`Moved ${issueKey} to DONE`);
+            }
+          }
+
+          (async () => {
+            for (const requestName of selectedPassed) {
+              const issue = await findTestcaseIssue(requestName);
+
+              if (!issue) {
+                console.log(`No Jira testcase issue found for: ${requestName}`);
+                continue;
+              }
+
+              await moveIssueToDone(issue.key);
+            }
+          })();
+          NODE

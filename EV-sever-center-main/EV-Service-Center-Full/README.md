@@ -1,8 +1,17 @@
-pytest -v
+# quét frontend
+
+npx playwright test
+
+# Quét Sonar
+
+& "D:\Download\sonar-scanner-cli-8.0.1.6346-windows-x64\sonar-scanner-8.0.1.6346-windows-x64\bin\sonar-scanner.bat" "-Dsonar.host.url=http://localhost:9000" "-Dsonar.token=sqp_3ff1981bf630063054852b4343f1be1ee9948f9b"
+
+pytest --cov=. --cov-report=term --cov-report=html
+
 docker-compose up -d --force-recreate listing-service
 docker-compose up -d --build frontend
 docker-compose down -v
-"\\wsl. localhost\docker-desktop\mnt\docker-desktop-disk\data\docker\volumes\second-handevbatterytradingplatform_listing_uploads_data"
+"\\wsl.localhost\docker-desktop\mnt\docker-desktop-disk\data\docker\volumes\second-handevbatterytradingplatform_listing_uploads_data"
 
 Move-Item -Path .\app\* -Destination .\ # Di chuyển toàn bộ nội dung bên trong thư mục app ra thư mục hiện tại
 

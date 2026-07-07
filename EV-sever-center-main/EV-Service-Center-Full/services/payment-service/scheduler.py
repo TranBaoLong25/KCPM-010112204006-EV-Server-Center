@@ -32,7 +32,7 @@ def init_scheduler(app):
         trigger="interval",
         minutes=1,
         id="expire_pending_payments",
-        name="Hủy giao dịch pending quá 1 phút",
+        name="Hủy giao dịch pending quá 15 phút",
         replace_existing=True
     )
 

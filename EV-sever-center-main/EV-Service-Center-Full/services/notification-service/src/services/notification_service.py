@@ -23,19 +23,21 @@ class NotificationService:
         
         try:
             # Validation rules
-            if len(data["title"]) == 0 or len(data["title"]) > 255:
+            title = data["title"]
+            message = data["message"]
+            if not isinstance(title, str) or not title.strip() or len(title.strip()) > 255:
                 return None, "Error creating notification: title must be between 1 and 255 characters"
 
-            if len(data["message"]) == 0:
+            if not isinstance(message, str) or not message.strip():
                 return None, "Error creating notification: message must not be empty"
 
             valid_types = {"booking_status", "inventory_alert", "payment", "reminder", "system"}
             valid_channels = {"in_app", "email", "sms", "push"}
             valid_priorities = {"low", "medium", "high", "urgent"}
 
-            notification_type = data.get("notification_type", "system")
-            channel = data.get("channel", "in_app")
-            priority = data.get("priority", "medium")
+            notification_type = (data.get("notification_type") or "system").strip().lower()
+            channel = (data.get("channel") or "in_app").strip().lower()
+            priority = (data.get("priority") or "medium").strip().lower()
 
             if notification_type not in valid_types:
                 return None, "Error creating notification: invalid notification_type"
@@ -58,8 +60,8 @@ class NotificationService:
             notification = Notification(
                 user_id=data["user_id"],
                 notification_type=notification_type,
-                title=data["title"],
-                message=data["message"],
+                title=title.strip(),
+                message=message.strip(),
                 channel=channel,
                 priority=priority,
                 related_entity_type=data.get("related_entity_type"),
@@ -101,7 +103,7 @@ class NotificationService:
         if unread_only:
             query = query.filter(Notification.status != "read")
         
-        return query.order_by(Notification.created_at.desc()).all()
+        return query.order_by(Notification.created_at.desc(), Notification.id.desc()).all()
     
     @staticmethod
     def mark_as_read(notification_id, user_id):

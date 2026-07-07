@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="23" time="1.081" timestamp="2026-07-01T17:20:26.444791+07:00" hostname="LAPTOP-LEP9UCDL"><testcase classname="tests.test_notification_service" name="test_create_notification_valid" time="0.352" /><testcase classname="tests.test_notification_service" name="test_create_notification_missing_user_id" time="0.009" /><testcase classname="tests.test_notification_service" name="test_create_notification_invalid_scheduled_at" time="0.011" /><testcase classname="tests.test_notification_service" name="test_internal_create_notification_endpoint_success" time="0.028" /><testcase classname="tests.test_notification_service" name="test_internal_create_notification_endpoint_unauthorized" time="0.018" /><testcase classname="tests.test_notification_service" name="test_create_notification_title_too_long" time="0.016" /><testcase classname="tests.test_notification_service" name="test_create_notification_invalid_notification_type" time="0.014" /><testcase classname="tests.test_notification_service" name="test_create_notification_invalid_channel" time="0.015" /><testcase classname="tests.test_notification_service" name="test_create_notification_scheduled_at_valid" time="0.017" /><testcase classname="tests.test_notification_service" name="test_create_notification_with_metadata_and_related_entity" time="0.029" /><testcase classname="tests.test_notification_service" name="test_create_notification_uses_defaults_for_optional_fields" time="0.025" /><testcase classname="tests.test_notification_service" name="test_create_notification_rejects_blank_or_whitespace_title_and_message[   -hello]" time="0.016" /><testcase classname="tests.test_notification_service" name="test_create_notification_rejects_blank_or_whitespace_title_and_message[hello-   ]" time="0.017" /><testcase classname="tests.test_notification_service" name="test_create_notification_rejects_blank_or_whitespace_title_and_message[   -   ]" time="0.017" /><testcase classname="tests.test_notification_service" name="test_create_notification_rejects_invalid_priority" time="0.012" /><testcase classname="tests.test_notification_service" name="test_get_user_notifications_returns_latest_first_and_filters_unread" time="0.029"><failure message="assert [3, 2] == [2, 3]&#10;  &#10;  At index 0 diff: 3 != 2&#10;  &#10;  Full diff:&#10;    [&#10;  +     3,&#10;        2,&#10;  -     3,&#10;    ]">app = &lt;Flask 'app'&gt;
+
+    @pytest.mark.blackbox
+    def test_get_user_notifications_returns_latest_first_and_filters_unread(app):
+        first = build_payload(user_id=7, title="First", message="First message")
+        second = build_payload(user_id=7, title="Second", message="Second message")
+        third = build_payload(user_id=7, title="Third", message="Third message")
+    
+        first_notification, _ = NotificationService.create_notification(first)
+        second_notification, _ = NotificationService.create_notification(second)
+        third_notification, _ = NotificationService.create_notification(third)
+    
+        notification, error = NotificationService.mark_as_read(first_notification.id, 7)
+        assert error is None
+        assert notification.status == "read"
+    
+        unread_notifications = NotificationService.get_user_notifications(7, unread_only=True)
+&gt;       assert [n.id for n in unread_notifications] == [second_notification.id, third_notification.id]
+E       assert [3, 2] == [2, 3]
+E         
+E         At index 0 diff: 3 != 2
+E         
+E         Full diff:
+E           [
+E         +     3,
+E               2,
+E         -     3,
+E           ]
+
+tests\test_notification_service.py:279: AssertionError</failure></testcase><testcase classname="tests.test_notification_service" name="test_mark_as_read_returns_not_found_for_other_user" time="0.029" /><testcase classname="tests.test_notification_service" name="test_mark_all_as_read_updates_all_unread_notifications" time="0.025" /><testcase classname="tests.test_notification_service" name="test_delete_notification_removes_owned_notification" time="0.024" /><testcase classname="tests.test_notification_service" name="test_delete_notification_fails_for_other_user" time="0.026" /><testcase classname="tests.test_notification_service" name="test_get_notification_stats_counts_read_and_unread" time="0.028" /><testcase classname="tests.test_notification_service" name="test_internal_create_notification_rejects_missing_required_fields" time="0.012" /><testcase classname="tests.test_notification_service" name="test_internal_create_notification_rejects_invalid_token" time="0.011" /></testsuite></testsuites>

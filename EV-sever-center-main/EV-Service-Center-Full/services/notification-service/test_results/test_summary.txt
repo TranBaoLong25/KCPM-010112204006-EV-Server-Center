@@ -1,0 +1,6 @@
+Notification Service Test Summary
+Generated: 2026-07-01T17:20:27.8822803+07:00
+Exit code: 1
+Status: FAILED
+JUnit XML: test_results\notification-results.xml
+Pytest log: test_results\pytest-output.txt

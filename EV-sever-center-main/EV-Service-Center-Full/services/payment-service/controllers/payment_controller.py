@@ -63,6 +63,7 @@ def create_payment_request_route():
 
 # 2. POST /api/payments/webhook (Mock PG Webhook - Dùng để mô phỏng thành công)
 @payment_bp.route("/webhook", methods=["POST"])
+@internal_token_required
 def handle_pg_webhook_route():
     data = request.json
     pg_transaction_id = data.get("pg_transaction_id")

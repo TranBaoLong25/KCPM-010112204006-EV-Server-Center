@@ -471,10 +471,10 @@ def test_webhook_invalid_status(db_session):
 
 @patch('services.notification_helper.NotificationHelper.send_notification')
 def test_expire_pending_transactions(mock_notify, db_session):
-    """Test quét và hủy các giao dịch pending quá hạn 1 phút"""
+    """Test quét và hủy các giao dịch pending quá hạn 15 phút"""
     mock_notify.return_value = True
 
-    # 1. Giao dịch pending tạo cách đây 5 phút (quá hạn)
+    # 1. Giao dịch pending tạo cách đây 20 phút (quá hạn)
     tx_expired = PaymentTransaction(
         invoice_id=1,
         user_id=10,
@@ -482,7 +482,7 @@ def test_expire_pending_transactions(mock_notify, db_session):
         method="momo_qr",
         status="pending",
         pg_transaction_id="PG_EXPIRED",
-        created_at=datetime.utcnow() - timedelta(minutes=5)
+        created_at=datetime.utcnow() - timedelta(minutes=20)
     )
 
     # 2. Giao dịch pending tạo ngay bây giờ (chưa quá hạn)

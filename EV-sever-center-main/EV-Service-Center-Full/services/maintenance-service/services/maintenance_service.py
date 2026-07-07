@@ -249,9 +249,32 @@ class MaintenanceService:
         return item, None
 
     @staticmethod
-    def remove_checklist_item(item_id):
+    def remove_checklist_item(item_id, current_user_id=None, is_admin=False):
         item = MaintenanceChecklist.query.get(item_id)
-        if not item: return None, "Hạng mục kiểm tra không tồn tại"
-        db.session.delete(item)
-        db.session.commit()
-        return True, None
+
+        if not item:
+            return None, "Hạng mục kiểm tra không tồn tại"
+
+        # Kiểm tra quyền: Admin hoặc Technician được phân công
+        if not is_admin and current_user_id:
+            task = MaintenanceTask.query.get(item.task_id)
+
+            if task and task.technician_id:
+                try:
+                    tech_id = int(task.technician_id)
+                    user_id = int(current_user_id)
+
+                    if tech_id != user_id:
+                        return None, "Bạn không có quyền xóa checklist này"
+
+                except (ValueError, TypeError):
+                    return None, "Lỗi xác thực người dùng"
+
+        try:
+            db.session.delete(item)
+            db.session.commit()
+            return True, None
+
+        except Exception as e:
+            db.session.rollback()
+            return None, str(e)
