@@ -263,35 +263,39 @@ def create_staff():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
-
 @staff_bp.route("/<int:staff_id>", methods=["PUT"])
 @jwt_required()
 def update_staff(staff_id):
     """Cập nhật thông tin nhân viên"""
     try:
+        if staff_id <= 0:
+            return jsonify({"success": False, "error": "staff_id phải lớn hơn 0"}), 400
+
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"success": False, "error": "Body không được rỗng"}), 400
+
         staff = Staff.query.get(staff_id)
         if not staff:
             return jsonify({"success": False, "error": "Staff not found"}), 404
 
-        data = request.get_json()
-
-        # Update fields
-        if 'full_name' in data:
-            staff.full_name = data['full_name']
-        if 'email' in data:
-            staff.email = data['email']
-        if 'phone' in data:
-            staff.phone = data['phone']
-        if 'role' in data:
-            staff.role = data['role']
-        if 'specialization' in data:
-            staff.specialization = data['specialization']
-        if 'status' in data:
-            staff.status = data['status']
-        if 'department' in data:
-            staff.department = data['department']
-        if 'employee_code' in data:
-            staff.employee_code = data['employee_code']
+        if "full_name" in data:
+            staff.full_name = data["full_name"]
+        if "email" in data:
+            staff.email = data["email"]
+        if "phone" in data:
+            staff.phone = data["phone"]
+        if "role" in data:
+            staff.role = data["role"]
+        if "specialization" in data:
+            staff.specialization = data["specialization"]
+        if "status" in data:
+            staff.status = data["status"]
+        if "department" in data:
+            staff.department = data["department"]
+        if "employee_code" in data:
+            staff.employee_code = data["employee_code"]
 
         db.session.commit()
 
