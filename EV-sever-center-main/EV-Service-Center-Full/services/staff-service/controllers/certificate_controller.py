@@ -33,48 +33,42 @@ def get_all_certificates():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
 @certificate_bp.route("/", methods=["POST"])
 @jwt_required()
 def create_certificate():
-    """
-    Thêm chứng chỉ mới
-
-    Body:
-    {
-        "staff_id": 1,
-        "certificate_name": "EV Battery Specialist",
-        "certificate_type": "ev_certification",
-        "issued_date": "2024-01-01",
-        "expiry_date": "2026-01-01",
-        "issuing_organization": "VinFast Academy",
-        "certificate_number": "EVBS-2024-001"
-    }
-    """
     try:
         data = request.get_json()
 
-        # Validate required fields
-        required = ['staff_id', 'certificate_name', 'certificate_type']
+        if not data:
+            return jsonify({"success": False, "error": "Body không được rỗng"}), 400
+
+        required = ["staff_id", "certificate_name", "certificate_type"]
         if not all(field in data for field in required):
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
-        # Check if staff exists
-        staff = Staff.query.get(data['staff_id'])
+        try:
+            staff_id = int(data["staff_id"])
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "staff_id phải là số nguyên"}), 400
+
+        if staff_id <= 0:
+            return jsonify({"success": False, "error": "staff_id phải lớn hơn 0"}), 400
+
+        staff = Staff.query.get(staff_id)
         if not staff:
             return jsonify({"success": False, "error": "Staff not found"}), 404
 
         certificate = StaffCertificate(
-            staff_id=data['staff_id'],
-            certificate_name=data['certificate_name'],
-            certificate_type=data['certificate_type'],
-            issued_date=datetime.fromisoformat(data['issued_date']).date() if data.get('issued_date') else None,
-            expiry_date=datetime.fromisoformat(data['expiry_date']).date() if data.get('expiry_date') else None,
-            issuing_organization=data.get('issuing_organization'),
-            certificate_number=data.get('certificate_number'),
-            certificate_file_url=data.get('certificate_file_url'),
-            notes=data.get('notes'),
-            status='valid'
+            staff_id=staff_id,
+            certificate_name=data["certificate_name"],
+            certificate_type=data["certificate_type"],
+            issued_date=datetime.fromisoformat(data["issued_date"]).date() if data.get("issued_date") else None,
+            expiry_date=datetime.fromisoformat(data["expiry_date"]).date() if data.get("expiry_date") else None,
+            issuing_organization=data.get("issuing_organization"),
+            certificate_number=data.get("certificate_number"),
+            certificate_file_url=data.get("certificate_file_url"),
+            notes=data.get("notes"),
+            status="valid"
         )
 
         db.session.add(certificate)
@@ -85,6 +79,10 @@ def create_certificate():
             "message": "Certificate added successfully",
             "certificate": certificate.to_dict()
         }), 201
+
+    except ValueError:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "Ngày cấp hoặc ngày hết hạn sai định dạng"}), 400
 
     except Exception as e:
         db.session.rollback()
