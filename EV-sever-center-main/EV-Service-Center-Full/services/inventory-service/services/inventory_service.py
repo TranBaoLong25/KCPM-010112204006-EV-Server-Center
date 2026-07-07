@@ -46,7 +46,16 @@ class InventoryService:
     def create_item(data):
         part_number = data.get("part_number")
         center_id = data.get("center_id", 1) 
+        try:
+            quantity = int(data.get("quantity", 0))
+            min_quantity = int(data.get("min_quantity", 10))
+            price = float(data.get("price", 0))
+            center_id = int(center_id)
+        except (TypeError, ValueError):
+            return None, "quantity, min_quantity, price, center_id phải đúng kiểu số"
 
+        if quantity < 0:
+            return None, "quantity không được nhỏ hơn 0"
         existing_item = InventoryService.get_item_by_part_number(part_number, center_id)
         if existing_item:
             return None, f"Mã phụ tùng '{part_number}' đã tồn tại tại chi nhánh {center_id}"
@@ -54,7 +63,7 @@ class InventoryService:
         new_item = Inventory(
             part_number=part_number,
             name=data.get("name"),
-            quantity=data.get("quantity", 0),
+            quantity=quantity,
             min_quantity=data.get("min_quantity", 10),
             price=data.get("price", 0),
             center_id=center_id

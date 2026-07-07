@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.inventory_service import InventoryService as service 
-
+from flask_jwt_extended import jwt_required
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/api/inventory")
 
 # ✅ 1. CREATE ITEM (POST /api/inventory/items)
@@ -21,6 +21,7 @@ def create_item():
 
 # ✅ 2. GET ALL ITEMS (GET /api/inventory/items?center_id=1)
 @inventory_bp.route("/items", methods=["GET"])
+@jwt_required()
 def get_all_items():
     # Lấy center_id từ query params để lọc
     center_id = request.args.get('center_id', type=int)
