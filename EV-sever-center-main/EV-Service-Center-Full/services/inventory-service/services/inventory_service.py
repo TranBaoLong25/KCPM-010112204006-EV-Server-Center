@@ -204,3 +204,11 @@ class InventoryService:
         title = "🚨 HẾT HÀNG KHẨN CẤP"
         message = f"Phụ tùng '{item.name}' (#{item.part_number}) tại Chi nhánh {item.center_id} ĐÃ HẾT HÀNG!"
         NotificationHelper.send_to_multiple_users(admin_ids, "inventory_alert", title, message, "urgent", "inventory", item.id)
+    @staticmethod
+    def get_low_stock_items(center_id=None):
+        query = Inventory.query.filter(Inventory.quantity <= Inventory.min_quantity)
+
+        if center_id is not None:
+            query = query.filter(Inventory.center_id == center_id)
+
+        return query.order_by(Inventory.quantity.asc()).all()
