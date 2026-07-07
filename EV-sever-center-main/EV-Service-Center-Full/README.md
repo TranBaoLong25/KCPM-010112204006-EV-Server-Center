@@ -1,7 +1,8 @@
+pytest -v
 docker-compose up -d --force-recreate listing-service
 docker-compose up -d --build frontend
 docker-compose down -v
-"\\wsl.localhost\docker-desktop\mnt\docker-desktop-disk\data\docker\volumes\second-handevbatterytradingplatform_listing_uploads_data"
+"\\wsl. localhost\docker-desktop\mnt\docker-desktop-disk\data\docker\volumes\second-handevbatterytradingplatform_listing_uploads_data"
 
 Move-Item -Path .\app\* -Destination .\ # Di chuyển toàn bộ nội dung bên trong thư mục app ra thư mục hiện tại
 

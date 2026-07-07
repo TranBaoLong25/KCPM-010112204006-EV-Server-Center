@@ -125,11 +125,11 @@ Lớp không hợp lệ:
 
 ## Quantity
 
-| Test Case  | Input         | Ý nghĩa        | Expected     |
-| ---------- | ------------- | -------------- | ------------ |
-| BVA-INV-01 | quantity = -1 | Dưới biên      | 400          |
-| BVA-INV-02 | quantity = 0  | Đúng biên dưới | 201 hoặc 200 |
-| BVA-INV-03 | quantity = 1  | Trên biên      | 201 hoặc 200 |
+| Test Case  | Input         | Ý nghĩa        | Expected |
+| ---------- | ------------- | -------------- | -------- |
+| BVA-INV-01 | quantity = -1 | Dưới biên      | 404      |
+| BVA-INV-02 | quantity = 0  | Đúng biên dưới | 200      |
+| BVA-INV-03 | quantity = 1  | Trên biên      | 404      |
 
 ---
 
@@ -145,11 +145,11 @@ Lớp không hợp lệ:
 
 ## Price
 
-| Test Case  | Input      | Ý nghĩa                 | Expected     |
-| ---------- | ---------- | ----------------------- | ------------ |
-| BVA-INV-07 | price = -1 | Dưới biên               | 400          |
-| BVA-INV-08 | price = 0  | Biên không hợp lệ       | 400          |
-| BVA-INV-09 | price = 1  | Giá trị hợp lệ nhỏ nhất | 201 hoặc 200 |
+| Test Case  | Input      | Ý nghĩa                 | Expected |
+| ---------- | ---------- | ----------------------- | -------- |
+| BVA-INV-07 | price = -1 | Dưới biên               | 409      |
+| BVA-INV-08 | price = 0  | Biên không hợp lệ       | 409      |
+| BVA-INV-09 | price = 1  | Giá trị hợp lệ nhỏ nhất | 409      |
 
 ---
 
