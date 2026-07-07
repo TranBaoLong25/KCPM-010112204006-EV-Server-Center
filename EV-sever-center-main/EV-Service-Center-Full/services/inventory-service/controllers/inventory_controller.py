@@ -44,9 +44,16 @@ def get_all_items():
 def get_low_stock():
     center_id = request.args.get("center_id", type=int)
 
-    items = service.get_low_stock_items(center_id=center_id)
-    return jsonify([item.to_dict() for item in items]), 200
+    if center_id is not None and center_id <= 0:
+        return jsonify({
+            "error": "center_id phải lớn hơn 0"
+        }), 400
 
+    items = service.get_low_stock_items(center_id=center_id)
+
+    return jsonify(
+        [item.to_dict() for item in items]
+    ), 200
 
 # ✅ 4. GET ITEM BY ID
 @inventory_bp.route("/items/<int:item_id>", methods=["GET"])
