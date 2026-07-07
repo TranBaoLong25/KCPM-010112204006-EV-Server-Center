@@ -44,6 +44,8 @@ class InventoryService:
 
     @staticmethod
     def create_item(data):
+        if price <= 0:
+            return None, "price phải lớn hơn 0"
         part_number = data.get("part_number")
         center_id = data.get("center_id", 1) 
         try:
