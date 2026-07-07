@@ -34,29 +34,34 @@ def get_all_performance():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
 @performance_bp.route("/staff/<int:staff_id>/current", methods=["GET"])
 @jwt_required()
 def get_staff_current_performance(staff_id):
     """Lấy hiệu suất tháng hiện tại của nhân viên"""
     try:
+        if staff_id <= 0:
+            return jsonify({
+                "success": False,
+                "error": "staff_id phải lớn hơn 0"
+            }), 400
+
         staff = Staff.query.get(staff_id)
         if not staff:
-            return jsonify({"success": False, "error": "Staff not found"}), 404
+            return jsonify({
+                "success": False,
+                "error": "Staff not found"
+            }), 404
 
-        # Calculate current month performance
         today = datetime.now().date()
         month_start = today.replace(day=1)
 
-        # Get or create current month performance
         performance = StaffPerformance.query.filter_by(
             staff_id=staff_id,
-            period_type='monthly',
+            period_type="monthly",
             period_start=month_start
         ).first()
 
         if not performance:
-            # Calculate from assignments
             month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
             assignments = StaffAssignment.query.filter(
@@ -66,19 +71,23 @@ def get_staff_current_performance(staff_id):
             ).all()
 
             tasks_assigned = len(assignments)
-            tasks_completed = len([a for a in assignments if a.status == 'completed'])
-            tasks_cancelled = len([a for a in assignments if a.status == 'cancelled'])
+            tasks_completed = len([a for a in assignments if a.status == "completed"])
+            tasks_cancelled = len([a for a in assignments if a.status == "cancelled"])
 
-            # Calculate average completion time
-            completed_with_duration = [a for a in assignments
-                                      if a.status == 'completed' and a.actual_duration_minutes]
+            completed_with_duration = [
+                a for a in assignments
+                if a.status == "completed" and a.actual_duration_minutes
+            ]
+
             avg_time = 0
             if completed_with_duration:
-                avg_time = sum(a.actual_duration_minutes for a in completed_with_duration) / len(completed_with_duration)
+                avg_time = sum(
+                    a.actual_duration_minutes for a in completed_with_duration
+                ) / len(completed_with_duration)
 
             performance = StaffPerformance(
                 staff_id=staff_id,
-                period_type='monthly',
+                period_type="monthly",
                 period_start=month_start,
                 period_end=month_end,
                 tasks_assigned=tasks_assigned,
@@ -96,8 +105,8 @@ def get_staff_current_performance(staff_id):
         }), 200
 
     except Exception as e:
+        db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 @performance_bp.route("/", methods=["POST"])
 @jwt_required()
