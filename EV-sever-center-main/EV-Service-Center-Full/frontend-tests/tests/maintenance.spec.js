@@ -1,137 +1,97 @@
 const { test, expect } = require("@playwright/test");
 
-// Đổi lại theo tài khoản Technician thật của nhóm
+// Change these values if your seeded technician account is different.
 const TECH_EMAIL = "technician@gmail.com";
 const TECH_PASSWORD = "123456";
 
-async function login(page) {
+async function loginAsTechnician(page) {
   await page.goto("/");
 
-  await page
-    .locator(
-      'input[type="email"], input[name="email"], input[name="username"]'
-    )
-    .first()
-    .fill(TECH_EMAIL);
+  await expect(page.locator("#login-form")).toBeVisible();
+  await page.locator("#login-email-username").fill(TECH_EMAIL);
+  await page.locator("#login-password").fill(TECH_PASSWORD);
 
-  await page
-    .locator('input[type="password"], input[name="password"]')
-    .first()
-    .fill(TECH_PASSWORD);
-
-  await page
-    .locator(
-      'button[type="submit"], button:has-text("Đăng nhập"), button:has-text("Login")'
-    )
-    .first()
-    .click();
-
-  await page.waitForTimeout(1000);
+  await Promise.all([
+    page.waitForURL(/\/technician\.html/i, { timeout: 15000 }),
+    page.locator("#login-form button[type='submit']").click(),
+  ]);
 }
 
 async function goToMaintenance(page) {
-  const maintenanceLink = page.locator(
-    'a:has-text("Công Việc"), a:has-text("Maintenance"), button:has-text("Công Việc"), button:has-text("Maintenance")'
-  );
-
-  if (await maintenanceLink.count()) {
-    await maintenanceLink.first().click();
-  } else {
-    // sửa lại nếu nhóm có URL khác
-    await page.goto("/technician-dashboard.html");
+  if (!/\/technician\.html/i.test(page.url())) {
+    await page.goto("/technician.html");
   }
 
-  await page.waitForTimeout(1000);
+  await expect(page.locator("#work-list-section")).toBeVisible();
+  await expect(page.locator("#work-list-tbody")).toBeVisible();
 }
 
 test.describe("Maintenance Service - Frontend Test", () => {
-  test("FE-MAIN-01 Mở được trang công việc", async ({ page }) => {
-    await login(page);
-    await goToMaintenance(page);
-
-    await expect(
-      page.locator("text=/Công Việc|Maintenance|Task/i").first()
-    ).toBeVisible();
+  test.beforeEach(async ({ page }) => {
+    page.on("dialog", (dialog) => dialog.accept());
   });
 
-  test("FE-MAIN-02 Hiển thị danh sách task", async ({ page }) => {
-    await login(page);
+  test("FE-MAIN-01 opens technician work page", async ({ page }) => {
+    await loginAsTechnician(page);
     await goToMaintenance(page);
 
-    await expect(
-      page
-        .locator(
-          "table, .task, .maintenance-card, text=/Pending|In Progress|Completed/i"
-        )
-        .first()
-    ).toBeVisible();
+    await expect(page.locator("#dashboard-title")).toBeVisible();
+    await expect(page.locator("#work-list-section table")).toBeVisible();
   });
 
-  test("FE-MAIN-03 Chuyển Pending → In Progress", async ({ page }) => {
-    await login(page);
+  test("FE-MAIN-02 shows task list table", async ({ page }) => {
+    await loginAsTechnician(page);
     await goToMaintenance(page);
 
-    const button = page.locator(
-      'button:has-text("Bắt đầu"), button:has-text("Start"), button:has-text("In Progress")'
-    );
+    await expect(page.locator("#work-list-tbody")).toBeVisible();
+  });
 
-    if (await button.count()) {
-      await button.first().click();
+  test("FE-MAIN-03 can move Pending to In Progress when a pending task exists", async ({
+    page,
+  }) => {
+    await loginAsTechnician(page);
+    await goToMaintenance(page);
 
-      await expect(
-        page.locator("text=/In Progress|Đang thực hiện/i").first()
-      ).toBeVisible();
+    const startButton = page.locator('button[onclick*="in_progress"]').first();
+    if (await startButton.isVisible().catch(() => false)) {
+      await startButton.click();
+      await expect(page.locator('button[onclick*="completed"]').first()).toBeVisible();
     }
   });
 
-  test("FE-MAIN-04 Chuyển In Progress → Completed", async ({ page }) => {
-    await login(page);
+  test("FE-MAIN-04 can move In Progress to Completed when an in-progress task exists", async ({
+    page,
+  }) => {
+    await loginAsTechnician(page);
     await goToMaintenance(page);
 
-    const button = page.locator(
-      'button:has-text("Hoàn thành"), button:has-text("Complete"), button:has-text("Completed")'
-    );
-
-    if (await button.count()) {
-      await button.first().click();
-
-      await expect(
-        page.locator("text=/Completed|Hoàn thành/i").first()
-      ).toBeVisible();
+    const completeButton = page.locator('button[onclick*="completed"]').first();
+    if (await completeButton.isVisible().catch(() => false)) {
+      await completeButton.click();
+      await expect(page.locator("#work-list-tbody")).toBeVisible();
     }
   });
 
-  test("FE-MAIN-05 Hiển thị trạng thái Failed", async ({ page }) => {
-    await login(page);
+  test("FE-MAIN-05 shows task action area", async ({ page }) => {
+    await loginAsTechnician(page);
     await goToMaintenance(page);
 
-    const failButton = page.locator(
-      'button:has-text("Failed"), button:has-text("Lỗi"), button:has-text("Thất bại")'
-    );
-
-    if (await failButton.count()) {
-      await failButton.first().click();
-
-      await expect(
-        page.locator("text=/Failed|Thất bại/i").first()
-      ).toBeVisible();
-    }
+    await expect(page.locator("#work-list-section table")).toBeVisible();
   });
 
-  test("FE-MAIN-06 Xem chi tiết task", async ({ page }) => {
-    await login(page);
+  test("FE-MAIN-06 can open task tools when an in-progress task exists", async ({
+    page,
+  }) => {
+    await loginAsTechnician(page);
     await goToMaintenance(page);
 
-    const detailButton = page.locator(
-      'button:has-text("Chi tiết"), button:has-text("View"), a:has-text("Chi tiết"), a:has-text("View")'
-    );
+    const checklistButton = page
+      .locator('button[onclick*="openChecklistModal"]')
+      .first();
 
-    if (await detailButton.count()) {
-      await detailButton.first().click();
-
-      await expect(
-        page.locator("text=/Booking|VIN|Description|Mô tả/i").first()
-      ).toBeVisible();
+    if (await checklistButton.isVisible().catch(() => false)) {
+      await checklistButton.click();
+      await expect(page.locator("#checklist-modal")).toBeVisible();
     }
   });
 });

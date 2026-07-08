@@ -7,24 +7,9 @@ const ADMIN_PASSWORD = "123456";
 async function login(page) {
   await page.goto("/");
 
-  await page
-    .locator(
-      'input[type="email"], input[name="email"], input[name="username"]'
-    )
-    .first()
-    .fill(ADMIN_EMAIL);
-
-  await page
-    .locator('input[type="password"], input[name="password"]')
-    .first()
-    .fill(ADMIN_PASSWORD);
-
-  await page
-    .locator(
-      'button[type="submit"], button:has-text("Đăng nhập"), button:has-text("Login")'
-    )
-    .first()
-    .click();
+  await page.locator("#login-email-username").fill(ADMIN_EMAIL);
+  await page.locator("#login-password").fill(ADMIN_PASSWORD);
+  await page.locator("#login-form button[type='submit']").click();
 
   await page.waitForTimeout(1000);
 }

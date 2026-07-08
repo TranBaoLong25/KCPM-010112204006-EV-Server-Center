@@ -12,23 +12,12 @@ async function goToLogin(page) {
 }
 
 async function fillLoginForm(page, email, password) {
-  await page
-    .locator('input[type="email"], input[name="email"], input[name="username"]')
-    .first()
-    .fill(email);
-  await page
-    .locator('input[type="password"], input[name="password"]')
-    .first()
-    .fill(password);
+  await page.locator("#login-email-username").fill(email);
+  await page.locator("#login-password").fill(password);
 }
 
 async function clickLogin(page) {
-  await page
-    .locator(
-      'button[type="submit"], button:has-text("Đăng nhập"), button:has-text("Login")',
-    )
-    .first()
-    .click();
+  await page.locator("#login-form button[type='submit']").click();
 }
 
 test.describe("User Service - Frontend Login Test", () => {
@@ -46,7 +35,9 @@ test.describe("User Service - Frontend Login Test", () => {
     await fillLoginForm(page, VALID_EMAIL, VALID_PASSWORD);
     await clickLogin(page);
 
-    await expect(page).toHaveURL(/dashboard|profile|home|booking|index/i);
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem("jwt_token")))
+      .toBeTruthy();
   });
 
   test("FE-USER-03 Đăng nhập sai mật khẩu", async ({ page }) => {
@@ -76,17 +67,10 @@ test.describe("User Service - Frontend Login Test", () => {
   test("FE-USER-05 Bỏ trống email", async ({ page }) => {
     await goToLogin(page);
 
-    await page
-      .locator('input[type="password"], input[name="password"]')
-      .first()
-      .fill(VALID_PASSWORD);
+    await page.locator("#login-password").fill(VALID_PASSWORD);
     await clickLogin(page);
 
-    const emailInput = page
-      .locator(
-        'input[type="email"], input[name="email"], input[name="username"]',
-      )
-      .first();
+    const emailInput = page.locator("#login-email-username");
 
     await expect(emailInput).toBeVisible();
   });
@@ -94,17 +78,10 @@ test.describe("User Service - Frontend Login Test", () => {
   test("FE-USER-06 Bỏ trống password", async ({ page }) => {
     await goToLogin(page);
 
-    await page
-      .locator(
-        'input[type="email"], input[name="email"], input[name="username"]',
-      )
-      .first()
-      .fill(VALID_EMAIL);
+    await page.locator("#login-email-username").fill(VALID_EMAIL);
     await clickLogin(page);
 
-    const passwordInput = page
-      .locator('input[type="password"], input[name="password"]')
-      .first();
+    const passwordInput = page.locator("#login-password");
 
     await expect(passwordInput).toBeVisible();
   });
